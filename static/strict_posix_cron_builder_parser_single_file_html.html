@@ -1,0 +1,491 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Strict POSIX Cron - Builder & Parser</title>
+  <style>
+    :root {
+      --bg: #0b0f14; --panel:#11161d; --muted:#7b8a9b; --text:#e8eef5; --accent:#5cc8ff; --ok:#18c964; --err:#ff5d5d; --warn:#ffb449;
+      --card:#0f141b; --border:#1d2632; --chip:#162130; --shadow: 0 10px 30px rgba(0,0,0,.35);
+    }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji"; background: var(--bg); color:var(--text); }
+    .wrap { max-width: 1100px; margin: 32px auto; padding: 0 16px; }
+    header{ display:flex; gap:16px; align-items:center; justify-content:space-between; }
+    h1{ font-size: clamp(20px, 4vw, 28px); margin:0; font-weight:700; letter-spacing:.2px; }
+    .card{ background:var(--card); border:1px solid var(--border); border-radius:16px; padding:16px; box-shadow: var(--shadow); }
+    .title{ font-size: 14px; text-transform: uppercase; letter-spacing:.12em; color:var(--muted); margin:0 0 10px 0; }
+    .row{ display:grid; grid-template-columns: 160px 1fr; align-items:start; gap:12px; padding:10px 0; border-top:1px dashed var(--border); }
+    .row:first-child{ border-top:0; }
+    .field-title{ font-weight:600; color:#b8c4d4; }
+    .chips{ display:flex; flex-wrap:wrap; gap:6px; }
+    .chip{ background:var(--chip); border:1px solid var(--border); color:var(--text); padding:6px 8px; border-radius:8px; font-size:12px; cursor:pointer; }
+    .chip[aria-pressed="true"]{ outline:1px solid var(--accent); }
+    .chip:hover{ filter: brightness(1.1); }
+    .chip:active{ transform: translateY(1px); }
+    input[type="text"]{ width:100%; background:#0b1017; border:1px solid var(--border); color:var(--text); border-radius:10px; padding:10px 12px; font-size:14px; }
+    .small{ font-size:12px; color:var(--muted); }
+    .summary{ font-size:15px; line-height:1.5; color:#cfe5ff; }
+    .muted{ color:var(--muted); }
+    .out{ background:#0a0f16; border:1px solid var(--border); border-radius:12px; padding:12px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size:14px; }
+    .k{ color:#a7b6c7; }
+    .btn{ display:inline-flex; align-items:center; gap:8px; padding:10px 14px; border-radius:12px; border:1px solid var(--border); background:var(--panel); color:var(--text); cursor:pointer; font-weight:600; }
+    .btn:hover{ filter: brightness(1.06); }
+    .btn.copy{ margin-left:8px; }
+    .status{ margin-top:10px; font-size:13px; }
+    .ok{ color:var(--ok);} .err{ color:var(--err);} .warn{ color:var(--warn);} 
+    .two-col{ display:grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap:16px; }
+    @media (max-width: 860px){ .row{ grid-template-columns: 1fr; } .two-col{ grid-template-columns: 1fr; } }
+    .note{ padding:10px 12px; background:#0d1420; border:1px solid var(--border); border-radius:10px; }
+    .legend{ display:flex; flex-wrap:wrap; gap:12px; margin-top:6px; }
+    .example{ display:flex; flex-direction:column; gap:4px; align-items:flex-start; }
+
+    /* Top nav */
+    .topnav{ display:flex; gap:14px; align-items:center; }
+    .topnav a{ color:var(--muted); text-decoration:none; font-size:14px; padding:6px 8px; border-radius:8px; border:1px solid transparent; }
+    .topnav a:hover{ color:var(--text); border-color:var(--border); background:var(--panel); }
+
+    html{ scroll-behavior: smooth; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+        <h1>Strict POSIX Crontab - Builder & Parser</h1>
+      </div>
+      <nav class="topnav" aria-label="Sections">
+        <a href="#builder">Builder</a>
+        <a href="#parser">Parser</a>
+        <a href="#help">Help</a>
+      </nav>
+    </header>
+
+    <!-- Builder -->
+    <div id="builder" class="card" role="region" aria-labelledby="builder-label">
+      <p id="builder-label" class="title">Builder</p>
+
+      <div class="two-col">
+        <section class="card">
+          <p class="title">Time</p>
+          <div class="row">
+            <div class="field-title">Minute (0-59)</div>
+            <div>
+              <div class="chips" data-field="minute" data-min="0" data-max="59"></div>
+              <div class="small muted" id="minute-hint">Select specific minutes or leave as "Every".</div>
+            </div>
+          </div>
+          <div class="row">
+            <div class="field-title">Hour (0-23)</div>
+            <div>
+              <div class="chips" data-field="hour" data-min="0" data-max="23"></div>
+              <div class="small muted">24 hour clock. 0 = midnight, 23 = 11pm.</div>
+            </div>
+          </div>
+        </section>
+
+        <section class="card">
+          <p class="title">Date</p>
+          <div class="row">
+            <div class="field-title">Day of Month (1-31)</div>
+            <div>
+              <div class="chips" data-field="dom" data-min="1" data-max="31"></div>
+              <div class="small muted">If you select both DOM and DOW, POSIX runs when <strong>either</strong> matches.</div>
+            </div>
+          </div>
+          <div class="row">
+            <div class="field-title">Month (1-12)</div>
+            <div>
+              <div class="chips" data-field="month" data-min="1" data-max="12" data-labels="Jan,Feb,Mar,Apr,May,Jun,Jul,Aug,Sep,Oct,Nov,Dec"></div>
+              <div class="small muted">Names shown for readability only; the generated POSIX uses numbers.</div>
+            </div>
+          </div>
+          <div class="row">
+            <div class="field-title">Day of Week (0-6)</div>
+            <div>
+              <div class="chips" data-field="dow" data-min="0" data-max="6" data-labels="Sun,Mon,Tue,Wed,Thu,Fri,Sat"></div>
+              <div class="small muted">0 = Sunday. 7 for Sunday is <strong>not</strong> POSIX.</div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <section class="card">
+        <p class="title">Output</p>
+        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+          <div class="out" id="cron-out" aria-live="polite"><span class="k">*</span> <span class="k">*</span> <span class="k">*</span> <span class="k">*</span> <span class="k">*</span></div>
+          <button class="btn copy" id="copy-btn" title="Copy cron expression">Copy</button>
+          <button class="btn" id="copy-with-cmd" title="Copy cron with placeholder command">Copy with command</button>
+        </div>
+        <div class="summary" id="human-out">Every minute of every hour, every day.</div>
+        <div class="status muted" id="builder-note">Strict POSIX: no steps (*/5), no names in fields, no @macros.</div>
+      </section>
+
+      <section class="card">
+        <p class="title">Examples</p>
+        <div class="legend">
+          <!-- Basic -->
+          <div class="example"><button class="chip" data-preset="every-minute" title="* * * * *">Every minute</button><div class="small muted">Runs every minute.</div></div>
+          <div class="example"><button class="chip" data-preset="hourly" title="0 * * * *">On the hour</button><div class="small muted">At minute 0 of every hour.</div></div>
+          <div class="example"><button class="chip" data-preset="daily-0130" title="30 1 * * *">Daily 01:30</button><div class="small muted">01:30 every day.</div></div>
+          <div class="example"><button class="chip" data-preset="weekdays-0900" title="0 9 * * 1-5">Weekdays 09:00</button><div class="small muted">09:00 Monday to Friday.</div></div>
+          <div class="example"><button class="chip" data-preset="first-15th-0745" title="45 7 1,15 * *">1st and 15th at 07:45</button><div class="small muted">Two specific month days.</div></div>
+
+          <!-- Advanced -->
+          <div class="example"><button class="chip" data-preset="hourly-quarter" title="15 * * * *">At 15 past every hour</button><div class="small muted">Minute 15 each hour.</div></div>
+          <div class="example"><button class="chip" data-preset="business-hours-5min" title="0,5,10,15,20,25,30,35,40,45,50,55 9-17 * * 1-5">Every 5 minutes 09-17 Mon-Fri</button><div class="small muted">Manual minute list - steps are not POSIX.</div></div>
+          <div class="example"><button class="chip" data-preset="dom-and-dow-either" title="0 10 1 * 0">10:00 on 1st and Sundays</button><div class="small muted">Either DOM=1 or DOW=Sun matches.</div></div>
+          <div class="example"><button class="chip" data-preset="summer-months-noon" title="0 12 * 6-8 *">Noon during June-August</button><div class="small muted">Months 6-8 only.</div></div>
+
+          <!-- Unusual -->
+          <div class="example"><button class="chip" data-preset="odd-hours-midnight" title="0 1,3,5,7,9,11,13,15,17,19,21,23 * * *">On the hour of odd hours</button><div class="small muted">Top of every odd-numbered hour.</div></div>
+          <div class="example"><button class="chip" data-preset="last-workday-like" title="0 18 28-31 * 1-5">18:00 on DOM 28-31 and Mon-Fri</button><div class="small muted">Either late month days or weekdays.</div></div>
+          <div class="example"><button class="chip" data-preset="weekend-nights" title="30 22-23 * * 0,6">22:30-23:59 on weekends</button><div class="small muted">Evenings on Saturday and Sunday.</div></div>
+        </div>
+      </section>
+    </div>
+
+    <!-- Parser -->
+    <div id="parser" class="card" role="region" aria-labelledby="parser-label">
+      <p id="parser-label" class="title">Parser</p>
+      <div class="row">
+        <div class="field-title">POSIX cron (5 fields)</div>
+        <div>
+          <input id="cron-input" type="text" placeholder="e.g. 30 1 * * *" spellcheck="false" autocomplete="off" />
+          <div class="small muted" style="margin-top:6px;">Allowed per field: <code>*</code>, numbers, comma lists, or <code>low-high</code> ranges. No steps, no names, exactly 5 fields.</div>
+        </div>
+      </div>
+      <div class="row">
+        <div class="field-title">Status</div>
+        <div id="parse-status" class="status">Waiting for input...</div>
+      </div>
+      <div class="row">
+        <div class="field-title">Human description</div>
+        <div id="parse-human" class="summary muted">-</div>
+      </div>
+      <div class="note small">
+        <strong>DOM vs DOW rule:</strong> If day of month and day of week are both restricted (not <code>*</code>), POSIX runs the command when <em>either</em> field matches.
+      </div>
+    </div>
+
+    <!-- Help / Spec notes -->
+    <section class="card" id="help" style="margin-top:16px;">
+      <p class="title">Spec notes (what this tool enforces)</p>
+      <ul class="small">
+        <li>Exactly 5 fields: minute, hour, day of month, month, day of week.</li>
+        <li>Valid ranges: minute 0-59; hour 0-23; day of month 1-31; month 1-12; day of week 0-6 (0=Sun).</li>
+        <li>Field syntax: <code>*</code>, single number, comma list, or numeric <code>low-high</code> range.</li>
+        <li>No step values (<code>*/5</code>), no names (JAN, MON), no <code>@daily</code> macros, no Sunday=7.</li>
+        <li>Command shell, I/O, mailing behavior, and timezone are implementation defined and out of scope.</li>
+      </ul>
+    </section>
+  </div>
+
+<script>
+(function(){
+  // ===== Utilities =====
+  const byId = id => document.getElementById(id);
+  const $cronOut = byId('cron-out');
+  const $humanOut = byId('human-out');
+  const $builderNote = byId('builder-note');
+
+  const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const DOW_NAMES = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+
+  function range(a,b){ const out=[]; for(let i=a;i<=b;i++) out.push(i); return out; }
+  function uniqSorted(arr){ return [...new Set(arr)].sort((a,b)=>a-b); }
+  function arraysEqual(a,b){ return a.length===b.length && a.every((v,i)=>v===b[i]); }
+  function formatList(nums, mapFn){
+    const items = nums.map(n => mapFn? mapFn(n): String(n));
+    if(items.length===0) return '';
+    if(items.length===1) return items[0];
+    if(items.length===2) return items[0] + ' and ' + items[1];
+    return items.slice(0,-1).join(', ') + ', and ' + items.slice(-1);
+  }
+  function condense(values, min, max){
+    const all = range(min,max);
+    values = uniqSorted(values);
+    if(arraysEqual(values, all)) return '*';
+    let run = values.length>0;
+    for(let i=1;i<values.length;i++){ if(values[i]!==values[i-1]+1){ run=false; break; } }
+    if(run && values.length>=2) return values[0] + '-' + values[values.length-1];
+    return values.join(',');
+  }
+
+  function allowedCharsOnly(text){
+    for(let i=0;i<text.length;i++){
+      const ch = text[i];
+      const isDigit = ch >= '0' && ch <= '9';
+      if(!(isDigit || ch===',' || ch==='-')) return false;
+    }
+    return true;
+  }
+
+  function parseField(text, min, max, fieldName){
+    if(text==='*') return { any:true, values: range(min,max), raw:'*' };
+    if(!allowedCharsOnly(text)){
+      return { error: `${fieldName}: only digits, comma, and hyphen allowed (no steps, names, or macros).` };
+    }
+    const parts = text.split(',');
+    let values = [];
+    for(const part of parts){
+      if(part.length===0) return { error: `${fieldName}: empty list element.` };
+      if(part.indexOf('-')!==-1){
+        const bits = part.split('-');
+        if(bits.length!==2) return { error: `${fieldName}: invalid range syntax.` };
+        const a = Number(bits[0]);
+        const b = Number(bits[1]);
+        if(!Number.isInteger(a) || !Number.isInteger(b)) return { error: `${fieldName}: non-integer in range.` };
+        if(a>b) return { error: `${fieldName}: range must be low-high.` };
+        if(a<min || b>max) return { error: `${fieldName}: range out of bounds (${min}-${max}).` };
+        for(let v=a; v<=b; v++) values.push(v);
+      } else {
+        const n = Number(part);
+        if(!Number.isInteger(n)) return { error: `${fieldName}: non-integer value.` };
+        if(n<min || n>max) return { error: `${fieldName}: value ${n} out of bounds (${min}-${max}).` };
+        values.push(n);
+      }
+    }
+    values = uniqSorted(values);
+    return { any:false, values, raw: text };
+  }
+
+  function humanize(fields){
+    const m = fields.minute, h = fields.hour, dom = fields.dom, mon = fields.month, dow = fields.dow;
+    let time = '';
+    if(m.any && h.any){ time = 'Every minute'; }
+    else if(!m.any && h.any){ time = `At minute${m.values.length>1?'s':''} ${formatList(m.values)} past every hour`; }
+    else if(m.any && !h.any){ time = `Every minute of ${h.values.length>1?'hours':'hour'} ${formatList(h.values)}`; }
+    else { time = `At ${formatList(m.values)} minute${m.values.length>1?'s':''} past ${h.values.length>1?'hours':'hour'} ${formatList(h.values)}`; }
+
+    const months = mon.any ? 'every month' : 'in ' + formatList(mon.values, n=>MONTH_NAMES[n-1] + ` (${n})`);
+    let datePart = '';
+    if(dom.any && dow.any){ datePart = 'every day'; }
+    else if(!dom.any && dow.any){
+      datePart = `on day${dom.values.length>1?'s':''} ${formatList(dom.values)} of ${months}`;
+    } else if(dom.any && !dow.any){
+      datePart = `on ${formatList(dow.values, n=>DOW_NAMES[n] + ` (${n})`)} of ${months}`;
+    } else {
+      datePart = `on day${dom.values.length>1?'s':''} ${formatList(dom.values)} of ${months} <span class="muted">(or)</span> on ${formatList(dow.values, n=>DOW_NAMES[n] + ` (${n})`)} of ${months}`;
+    }
+
+    return `${time}, ${datePart}.`;
+  }
+
+  // ===== Builder state =====
+  const builderState = {
+    minute: { any:true, values: range(0,59) },
+    hour:   { any:true, values: range(0,23) },
+    dom:    { any:true, values: range(1,31) },
+    month:  { any:true, values: range(1,12) },
+    dow:    { any:true, values: range(0,6) },
+  };
+
+  function renderChips(){
+    document.querySelectorAll('.chips').forEach(container=>{
+      const field = container.getAttribute('data-field');
+      const min = Number(container.getAttribute('data-min'));
+      const max = Number(container.getAttribute('data-max'));
+      const labels = (container.getAttribute('data-labels')||'').split(',');
+      container.innerHTML = '';
+
+      const every = document.createElement('button');
+      every.className = 'chip';
+      every.textContent = 'Every *';
+      every.setAttribute('aria-pressed', builderState[field].any ? 'true':'false');
+      every.addEventListener('click', ()=>{
+        builderState[field] = { any:true, values: range(min,max) };
+        renderChips(); updateOutput();
+      });
+      container.appendChild(every);
+
+      for(let v=min; v<=max; v++){
+        const b = document.createElement('button');
+        b.className = 'chip';
+        const label = labels && labels[v-min] ? `${labels[v-min]} (${v})` : String(v);
+        b.textContent = label;
+        const pressed = !builderState[field].any && builderState[field].values.includes(v);
+        b.setAttribute('aria-pressed', pressed ? 'true':'false');
+        b.addEventListener('click', ()=>{
+          const fullCount = (max - min + 1);
+          if (builderState[field].any) {
+            builderState[field] = { any:false, values:[v] };
+          } else {
+            let next = new Set(builderState[field].values);
+            next.has(v) ? next.delete(v) : next.add(v);
+            let values = uniqSorted([...next]);
+            if (values.length === 0) {
+              builderState[field] = { any:true, values: range(min,max) };
+              renderChips(); updateOutput();
+              return;
+            }
+            const any = values.length === fullCount;
+            builderState[field] = { any, values: any ? range(min,max) : values };
+          }
+          renderChips(); updateOutput();
+        });
+        container.appendChild(b);
+      }
+    });
+  }
+
+  function updateOutput(){
+    const minute = condense(builderState.minute.values, 0,59);
+    const hour   = condense(builderState.hour.values, 0,23);
+    const dom    = condense(builderState.dom.values, 1,31);
+    const month  = condense(builderState.month.values, 1,12);
+    const dow    = condense(builderState.dow.values, 0,6);
+
+    $cronOut.innerHTML = `<span class="k">${minute}</span> <span class="k">${hour}</span> <span class="k">${dom}</span> <span class="k">${month}</span> <span class="k">${dow}</span>`;
+
+    const fields = {
+      minute: { any: minute==='*', values: minute==='*'? range(0,59) : builderState.minute.values },
+      hour:   { any: hour==='*',   values: hour==='*'?   range(0,23) : builderState.hour.values },
+      dom:    { any: dom==='*',    values: dom==='*'?    range(1,31) : builderState.dom.values },
+      month:  { any: month==='*',  values: month==='*'?  range(1,12) : builderState.month.values },
+      dow:    { any: dow==='*',    values: dow==='*'?    range(0,6)  : builderState.dow.values },
+    };
+    $humanOut.innerHTML = humanize(fields);
+
+    if(!fields.dom.any && !fields.dow.any){
+      $builderNote.innerHTML = 'Both DOM and DOW are restricted - POSIX runs when <em>either</em> matches.';
+    } else {
+      $builderNote.textContent = 'Strict POSIX: no steps (*/5), no names in fields, no @macros.';
+    }
+  }
+
+  const copyBtn = byId('copy-btn');
+  copyBtn.addEventListener('click', ()=>{
+    const text = $cronOut.textContent.trim();
+    navigator.clipboard.writeText(text).then(()=>{
+      const orig = copyBtn.textContent; copyBtn.textContent = 'Copied!';
+      setTimeout(()=>{ copyBtn.textContent = orig; }, 1200);
+    });
+  });
+  const copyWithCmd = byId('copy-with-cmd');
+  copyWithCmd.addEventListener('click', ()=>{
+    const text = $cronOut.textContent.trim() + ' your-command-here';
+    navigator.clipboard.writeText(text).then(()=>{
+      const orig = copyWithCmd.textContent; copyWithCmd.textContent = 'Copied!';
+      setTimeout(()=>{ copyWithCmd.textContent = orig; }, 1200);
+    });
+  });
+
+  // Presets
+  document.querySelectorAll('[data-preset]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const p = btn.getAttribute('data-preset');
+      function set(field, any, values){ builderState[field] = { any, values: any? (field==='minute'?range(0,59): field==='hour'?range(0,23): field==='dom'?range(1,31): field==='month'?range(1,12): range(0,6)) : values }; }
+      set('minute', true); set('hour', true); set('dom', true); set('month', true); set('dow', true);
+
+      if(p==='every-minute'){
+      } else if(p==='hourly'){
+        set('minute', false, [0]);
+      } else if(p==='daily-0130'){
+        set('minute', false, [30]); set('hour', false, [1]);
+      } else if(p==='weekdays-0900'){
+        set('minute', false, [0]); set('hour', false, [9]); set('dow', false, [1,2,3,4,5]);
+      } else if(p==='first-15th-0745'){
+        set('minute', false, [45]); set('hour', false, [7]); set('dom', false, [1,15]);
+      } else if(p==='sundays-1000'){
+        set('minute', false, [0]); set('hour', false, [10]); set('dow', false, [0]);
+      } else if(p==='hourly-quarter'){
+        set('minute', false, [15]);
+      } else if(p==='business-hours-5min'){
+        set('minute', false, [0,5,10,15,20,25,30,35,40,45,50,55]);
+        set('hour', false, range(9,17));
+        set('dow', false, [1,2,3,4,5]);
+      } else if(p==='dom-and-dow-either'){
+        set('minute', false, [0]); set('hour', false, [10]); set('dom', false, [1]); set('dow', false, [0]);
+      } else if(p==='odd-hours-midnight'){
+        set('minute', false, [0]); set('hour', false, [1,3,5,7,9,11,13,15,17,19,21,23]);
+      } else if(p==='summer-months-noon'){
+        set('minute', false, [0]); set('hour', false, [12]); set('month', false, [6,7,8]);
+      } else if(p==='last-workday-like'){
+        set('minute', false, [0]); set('hour', false, [18]); set('dom', false, [28,29,30,31]); set('dow', false, [1,2,3,4,5]);
+      } else if(p==='weekend-nights'){
+        set('minute', false, [30]); set('hour', false, [22,23]); set('dow', false, [0,6]);
+      }
+      renderChips(); updateOutput();
+    });
+  });
+
+  // ===== Parser =====
+  const $cronInput = byId('cron-input');
+  const $parseStatus = byId('parse-status');
+  const $parseHuman = byId('parse-human');
+
+  function splitFields(s){
+    const out=[]; let cur=''; let inSpace=true;
+    for(let i=0;i<s.length;i++){
+      const code = s.charCodeAt(i);
+      const isWS = code <= 32;
+      if(isWS){ if(!inSpace){ out.push(cur); cur=''; inSpace=true; } }
+      else { cur += s[i]; inSpace=false; }
+    }
+    if(cur) out.push(cur);
+    return out;
+  }
+
+  function parseCronText(text){
+    const trimmed = text.trim();
+    if(trimmed.length===0){ return { empty:true }; }
+    if(trimmed[0] === '@'){
+      return { error: 'POSIX does not define @macros such as @reboot or @daily.' };
+    }
+    if(trimmed.indexOf('/') !== -1){
+      return { error: 'Step syntax like */5 or 1-10/2 is not POSIX.' };
+    }
+    const parts = splitFields(trimmed);
+    if(parts.length !== 5){
+      return { error: `Expected exactly 5 fields, found ${parts.length}.` };
+    }
+    const minute = parts[0];
+    const hour   = parts[1];
+    const dom    = parts[2];
+    const month  = parts[3];
+    const dow    = parts[4];
+
+    const fMinute = parseField(minute, 0,59, 'Minute'); if(fMinute.error) return { error: fMinute.error };
+    const fHour   = parseField(hour,   0,23, 'Hour');   if(fHour.error)   return { error: fHour.error };
+    const fDom    = parseField(dom,    1,31, 'Day of month'); if(fDom.error) return { error: fDom.error };
+    const fMonth  = parseField(month,  1,12, 'Month');  if(fMonth.error)  return { error: fMonth.error };
+    const fDow    = parseField(dow,    0,6,  'Day of week'); if(fDow.error) return { error: fDow.error };
+
+    const fields = { minute:fMinute, hour:fHour, dom:fDom, month:fMonth, dow:fDow };
+    const human = humanize(fields);
+    return { ok:true, fields, human };
+  }
+
+  function onParseInput(){
+    const res = parseCronText($cronInput.value);
+    if(res.empty){
+      $parseStatus.innerHTML = 'Waiting for input...';
+      $parseStatus.className = 'status muted';
+      $parseHuman.innerHTML = '-';
+      $parseHuman.className = 'summary muted';
+      return;
+    }
+    if(res.error){
+      $parseStatus.innerHTML = `<span class="err">✖</span> ${res.error}`;
+      $parseStatus.className = 'status err';
+      $parseHuman.innerHTML = '-';
+      $parseHuman.className = 'summary muted';
+    } else {
+      $parseStatus.innerHTML = `<span class="ok">✔</span> Valid strict POSIX.`;
+      $parseStatus.className = 'status ok';
+      $parseHuman.innerHTML = res.human;
+      $parseHuman.className = 'summary';
+    }
+  }
+
+  $cronInput.addEventListener('input', onParseInput);
+
+  // ===== Init =====
+  renderChips();
+  updateOutput();
+})();
+</script>
+</body>
+</html>
