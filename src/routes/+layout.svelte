@@ -1,60 +1,46 @@
 <script lang="ts">
-  import '../app.css';
-  import favicon from '$lib/assets/favicon.svg';
-  import { onMount } from 'svelte';
+	import '../app.css';
 
-  let { children } = $props();
-
-  type Theme = 'light' | 'dark';
-  let theme = $state<Theme>('dark');
-
-  function applyTheme(t: Theme) {
-    theme = t;
-    if (typeof document !== 'undefined') {
-      const root = document.documentElement;
-      root.classList.toggle('dark', t === 'dark');
-      root.setAttribute('data-theme', t);
-    }
-    if (typeof localStorage !== 'undefined') {
-      localStorage.setItem('theme', t);
-    }
-  }
-
-  function toggleTheme() {
-    applyTheme(theme === 'dark' ? 'light' : 'dark');
-  }
-
-  onMount(() => {
-    try {
-      const saved = localStorage.getItem('theme') as Theme | null;
-      const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-      applyTheme(saved ?? (prefersDark ? 'dark' : 'dark'));
-    } catch {
-      applyTheme('dark');
-    }
-  });
+	function goHome(ev: MouseEvent) {
+		ev.preventDefault();
+		if (typeof window !== 'undefined') {
+			const url = window.location;
+			if (url.hash) {
+				history.replaceState(history.state, '', url.pathname + url.search);
+			}
+			window.scrollTo({ top: 0, behavior: 'smooth' });
+		}
+	}
 </script>
 
 <svelte:head>
-  <link rel="icon" href={favicon} />
-  <meta name="color-scheme" content="dark light" />
-  <meta name="theme-color" content="#0b0f14" />
+	<title>Strict POSIX cron: Builder & Parser</title>
 </svelte:head>
 
-<div class="min-h-dvh bg-slate-950 text-slate-100">
-  <header class="sticky top-0 z-50 border-b border-slate-800/60 bg-slate-950/80 backdrop-blur">
-    <div class="mx-auto max-w-5xl px-4 py-3 flex items-center justify-between gap-3">
-      <h1 class="text-lg font-semibold tracking-tight">Strict POSIX Cron — Builder & Parser</h1>
-      <button
-        class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-800 bg-slate-900 text-slate-100 text-sm [@media(hover:hover)]:hover:brightness-110"
-        aria-pressed={theme === 'dark' ? 'true' : 'false'}
-        onclick={toggleTheme}
-        title="Toggle dark mode"
-      >
-        {theme === 'dark' ? '🌙 Dark' : '☀️ Light'}
-      </button>
-    </div>
-  </header>
-
-  {@render children?.()}
+<div class="min-h-dvh bg-neutral-950 text-slate-100 scroll-smooth">
+	<a href="#content"
+		 class="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-neutral-900 focus:px-3 focus:py-2 focus:text-slate-100">Skip
+		to content</a>
+	<header
+		class="sticky top-0 z-10 border-b border-neutral-900 bg-neutral-950/80 backdrop-blur supports-[backdrop-filter]:bg-neutral-950/60">
+		<div class="mx-auto flex max-w-screen-lg items-center justify-between gap-4 px-4 py-3">
+			<a href="/"
+				 class="text-lg font-bold tracking-tight hover:text-emerald-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950 transition-colors"
+				 onclick={goHome}>Strict POSIX Cron Builder & Parser</a>
+			<nav class="flex items-center gap-2 text-sm" aria-label="Sections">
+				<a
+					class="rounded-md border border-transparent px-2 py-1 text-slate-400 hover:border-neutral-800 hover:bg-neutral-900 hover:text-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950 transition-colors"
+					href="#builder">Builder</a>
+				<a
+					class="rounded-md border border-transparent px-2 py-1 text-slate-400 hover:border-neutral-800 hover:bg-neutral-900 hover:text-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950 transition-colors"
+					href="#parser">Parser</a>
+				<a
+					class="rounded-md border border-transparent px-2 py-1 text-slate-400 hover:border-neutral-800 hover:bg-neutral-900 hover:text-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950 transition-colors"
+					href="#help">Help</a>
+			</nav>
+		</div>
+	</header>
+	<main id="content" class="mx-auto max-w-screen-lg px-4 py-5">
+		<slot />
+	</main>
 </div>
