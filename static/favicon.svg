@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Minimal monochrome favicon, light/dark aware -->
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24">
+  <style>
+    :root { color-scheme: light dark; }
+    .s { stroke: #0a0a0a; }
+    @media (prefers-color-scheme: dark) {
+      .s { stroke: #fafafa; }
+    }
+  </style>
+  <g fill="none" class="s" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+    <!-- simple clock/glyph to hint cron, kept very minimal -->
+    <circle cx="12" cy="12" r="8.25" />
+    <path d="M12 7.75v4.5l3 1.5" />
+  </g>
+</svg>

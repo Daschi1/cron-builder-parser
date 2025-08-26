@@ -15,6 +15,7 @@
 
 <svelte:head>
 	<title>Strict POSIX cron: Builder & Parser</title>
+	<link rel="icon" href="/favicon.svg" type="image/svg+xml" />
 </svelte:head>
 
 <div class="min-h-dvh bg-neutral-950 text-slate-100 scroll-smooth">
