@@ -183,7 +183,7 @@ export function humanize(fields: CronFields): string {
 		dom = fields.dom,
 		mon = fields.month,
 		dow = fields.dow;
-	let time = '';
+	let time: string;
 	if (m.any && h.any) {
 		time = 'Every minute';
 	} else if (!m.any && h.any) {
@@ -198,7 +198,7 @@ export function humanize(fields: CronFields): string {
 		? 'every month'
 		: 'in ' + formatList(mon.values, (n) => `${MONTH_NAMES[n - 1]} (${n})`);
 
-	let datePart = '';
+	let datePart: string;
 	if (dom.any && dow.any) {
 		datePart = 'every day';
 	} else if (!dom.any && dow.any) {
