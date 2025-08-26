@@ -1,38 +1,35 @@
-# sv
+# Strict POSIX cron: Builder & Parser
 
-Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
+A minimal strict POSIX cron builder and parser.
 
-## Creating a project
+## Getting started
 
-If you're seeing this, you've probably already done this step. Congrats!
+- Install dependencies:
+    - `pnpm install`
+- Start dev server:
+    - `pnpm dev`
+    - The app runs on http://localhost:5173 by default.
 
-```sh
-# create a new project in the current directory
-npx sv create
+## Production build and run (without Docker)
 
-# create a new project in my-app
-npx sv create my-app
-```
+- Build: `pnpm build`
+- Start: `pnpm start`
+    - This launches the SvelteKit Node server (default PORT=3000, HOST=0.0.0.0)
 
-## Developing
+## Docker
 
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
+- Build the image:
+    - `docker build -t cron-builder-parser:latest .`
+- Run the container:
+  -
+  `docker run -d --name cron-builder-parser -p 8080:3000 --env PORT=3000 --env HOST=0.0.0.0 cron-builder-parser:latest`
+    - Visit http://localhost:8080
+- Healthcheck:
+    - The image includes a Docker HEALTHCHECK hitting `http://127.0.0.1:3000/`. Inspect via
+      `docker ps`.
 
-```sh
-npm run dev
+## Configuration
 
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
-```
-
-## Building
-
-To create a production version of your app:
-
-```sh
-npm run build
-```
-
-You can preview the production build with `npm run preview`.
-
-> To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
+- Environment variables:
+    - `PORT` (default 3000)
+    - `HOST` (default 0.0.0.0)
