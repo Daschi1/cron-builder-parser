@@ -16,6 +16,15 @@
 <svelte:head>
 	<title>Strict POSIX cron: Builder & Parser</title>
 	<link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+
+	<!-- Hint to user agents that the page uses a dark color scheme so built-in UI
+	     (form controls, scrollbars, etc.) renders appropriately -->
+	<meta name="color-scheme" content="dark" />
+	<!-- Theme color for dark mode capable user agents (e.g., address bar color).
+	     We include a media-queried variant plus a non-conditional fallback for
+	     browsers/PWAs that do not evaluate the media attribute. -->
+	<meta name="theme-color" content="#0a0a0a" media="(prefers-color-scheme: dark)" />
+	<meta name="theme-color" content="#0a0a0a" />
 </svelte:head>
 
 <div class="min-h-dvh bg-neutral-950 text-slate-100 scroll-smooth">
