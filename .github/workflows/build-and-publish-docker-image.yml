@@ -43,27 +43,38 @@ jobs:
         id: version
         shell: bash
         run: |
+          echo "::group::Read version from package.json"
           # Read the semver (x.y.z) from package.json and split into parts
           VERSION=$(jq -r .version package.json)
+          echo "Detected version: ${VERSION}"
           if [[ -z "$VERSION" || "$VERSION" == "null" ]]; then
             echo "Could not read version from package.json" >&2
+            echo "::endgroup::"
             exit 1
           fi
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
           IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION"
+          echo "Parsed parts => MAJOR=${MAJOR}, MINOR=${MINOR}, PATCH=${PATCH}"
+          echo "::endgroup::"
+          # Expose outputs for downstream steps
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "major=$MAJOR" >> $GITHUB_OUTPUT
           echo "minor=$MINOR" >> $GITHUB_OUTPUT
           echo "patch=$PATCH" >> $GITHUB_OUTPUT
 
       - name: Compute tags
         id: meta
+        shell: bash
         run: |
+          echo "::group::Compute image reference and tags"
           # Compose the full image reference and tag set
           IMAGE_REF=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           MAJOR=${{ steps.version.outputs.major }}
           MINOR=${{ steps.version.outputs.minor }}
           PATCH=${{ steps.version.outputs.patch }}
           VERSION=${{ steps.version.outputs.version }}
+
+          echo "Image reference: ${IMAGE_REF}"
+          echo "Using version parts => MAJOR=${MAJOR}, MINOR=${MINOR}, PATCH=${PATCH}"
 
           TAGS=(
             "${IMAGE_REF}:latest"          # always update latest
@@ -72,9 +83,14 @@ jobs:
             "${IMAGE_REF}:${VERSION}"      # full semver, e.g. 1.2.3
           )
 
+          echo "Planned tags:"
+          for t in "${TAGS[@]}"; do echo " - ${t}"; done
+
           # Join tags with comma for build-push-action
           TAGS_CSV=$(IFS=, ; echo "${TAGS[*]}")
           echo "tags=$TAGS_CSV" >> $GITHUB_OUTPUT
+          echo "Computed tags CSV: ${TAGS_CSV}"
+          echo "::endgroup::"
 
       - name: Build and push
         uses: docker/build-push-action@v6
@@ -92,3 +108,14 @@ jobs:
           # Enable build cache stored in GHCR for faster rebuilds
           cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache
           cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache,mode=max
+
+      - name: Summarize publish details
+        if: always()
+        shell: bash
+        run: |
+          echo "## Docker Image Publish Summary" >> "$GITHUB_STEP_SUMMARY"
+          echo "Repository: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "Version: ${{ steps.version.outputs.version }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "Tags pushed:" >> "$GITHUB_STEP_SUMMARY"
+          IFS=',' read -ra TAGS_ARR <<< "${{ steps.meta.outputs.tags }}"
+          for t in "${TAGS_ARR[@]}"; do echo "- $t" >> "$GITHUB_STEP_SUMMARY"; done
