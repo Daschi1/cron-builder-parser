@@ -15,7 +15,7 @@ permissions:
 # Reusable values available to all jobs/steps
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}  # e.g. owner/repo
+  IMAGE_NAME: ${{ github.repository }}  # e.g. owner/repo (may be mixed-case)
 
 jobs:
   build-and-push:
@@ -67,12 +67,16 @@ jobs:
         run: |
           echo "::group::Compute image reference and tags"
           # Compose the full image reference and tag set
-          IMAGE_REF=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          # Lowercase the owner/repo to satisfy Docker/OCI naming rules
+          IMAGE_NAME_LOWER=$(echo "${{ env.IMAGE_NAME }}" | tr '[:upper:]' '[:lower:]')
+          IMAGE_REF=${{ env.REGISTRY }}/${IMAGE_NAME_LOWER}
           MAJOR=${{ steps.version.outputs.major }}
           MINOR=${{ steps.version.outputs.minor }}
           PATCH=${{ steps.version.outputs.patch }}
           VERSION=${{ steps.version.outputs.version }}
 
+          echo "Original IMAGE_NAME: ${{ env.IMAGE_NAME }}"
+          echo "Normalized (lowercase) IMAGE_NAME: ${IMAGE_NAME_LOWER}"
           echo "Image reference: ${IMAGE_REF}"
           echo "Using version parts => MAJOR=${MAJOR}, MINOR=${MINOR}, PATCH=${PATCH}"
 
@@ -89,6 +93,9 @@ jobs:
           # Join tags with comma for build-push-action
           TAGS_CSV=$(IFS=, ; echo "${TAGS[*]}")
           echo "tags=$TAGS_CSV" >> $GITHUB_OUTPUT
+          # Also expose normalized values for later steps
+          echo "image_name_lower=${IMAGE_NAME_LOWER}" >> $GITHUB_OUTPUT
+          echo "image_ref=${IMAGE_REF}" >> $GITHUB_OUTPUT
           echo "Computed tags CSV: ${TAGS_CSV}"
           echo "::endgroup::"
 
@@ -106,15 +113,15 @@ jobs:
             org.opencontainers.image.revision=${{ github.sha }}
             org.opencontainers.image.version=${{ steps.version.outputs.version }}
           # Enable build cache stored in GHCR for faster rebuilds
-          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache
-          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache,mode=max
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ steps.meta.outputs.image_name_lower }}:buildcache
+          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ steps.meta.outputs.image_name_lower }}:buildcache,mode=max
 
       - name: Summarize publish details
         if: always()
         shell: bash
         run: |
           echo "## Docker Image Publish Summary" >> "$GITHUB_STEP_SUMMARY"
-          echo "Repository: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "Repository: ${{ env.REGISTRY }}/${{ steps.meta.outputs.image_name_lower }}" >> "$GITHUB_STEP_SUMMARY"
           echo "Version: ${{ steps.version.outputs.version }}" >> "$GITHUB_STEP_SUMMARY"
           echo "Tags pushed:" >> "$GITHUB_STEP_SUMMARY"
           IFS=',' read -ra TAGS_ARR <<< "${{ steps.meta.outputs.tags }}"
