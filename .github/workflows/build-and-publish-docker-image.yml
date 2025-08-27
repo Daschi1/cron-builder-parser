@@ -1,0 +1,94 @@
+# GitHub Actions workflow: Build and publish a Docker image to GHCR on push to main
+name: Build and Publish Docker Image
+
+on:
+  push:
+    branches: [ main ]  # Trigger when commits land on main
+  workflow_dispatch:      # Allow manual runs from the Actions tab
+
+# Least-privilege permissions required for this workflow
+permissions:
+  contents: read   # read repo contents (needed for checkout)
+  packages: write  # push images to GitHub Container Registry
+  id-token: write  # enable provenance/SLSA attestation by build-push-action
+
+# Reusable values available to all jobs/steps
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}  # e.g. owner/repo
+
+jobs:
+  build-and-push:
+    name: Build and push to GHCR
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU (for multi-arch builds)
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}  # auto-provided token with package:write
+
+      - name: Extract version from package.json
+        id: version
+        shell: bash
+        run: |
+          # Read the semver (x.y.z) from package.json and split into parts
+          VERSION=$(jq -r .version package.json)
+          if [[ -z "$VERSION" || "$VERSION" == "null" ]]; then
+            echo "Could not read version from package.json" >&2
+            exit 1
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION"
+          echo "major=$MAJOR" >> $GITHUB_OUTPUT
+          echo "minor=$MINOR" >> $GITHUB_OUTPUT
+          echo "patch=$PATCH" >> $GITHUB_OUTPUT
+
+      - name: Compute tags
+        id: meta
+        run: |
+          # Compose the full image reference and tag set
+          IMAGE_REF=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          MAJOR=${{ steps.version.outputs.major }}
+          MINOR=${{ steps.version.outputs.minor }}
+          PATCH=${{ steps.version.outputs.patch }}
+          VERSION=${{ steps.version.outputs.version }}
+
+          TAGS=(
+            "${IMAGE_REF}:latest"          # always update latest
+            "${IMAGE_REF}:${MAJOR}"        # major tag, e.g. 1
+            "${IMAGE_REF}:${MAJOR}.${MINOR}"  # minor tag, e.g. 1.2
+            "${IMAGE_REF}:${VERSION}"      # full semver, e.g. 1.2.3
+          )
+
+          # Join tags with comma for build-push-action
+          TAGS_CSV=$(IFS=, ; echo "${TAGS[*]}")
+          echo "tags=$TAGS_CSV" >> $GITHUB_OUTPUT
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          provenance: true  # generate provenance (SLSA) metadata
+          sbom: true        # generate SBOM and attach to the image
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=${{ steps.version.outputs.version }}
+          # Enable build cache stored in GHCR for faster rebuilds
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache
+          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache,mode=max
