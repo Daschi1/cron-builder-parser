@@ -3,19 +3,19 @@ name: Build and Publish Docker Image
 
 on:
   push:
-    branches: [ main ]  # Trigger when commits land on main
-  workflow_dispatch:      # Allow manual runs from the Actions tab
+    branches: [main] # Trigger when commits land on main
+  workflow_dispatch: # Allow manual runs from the Actions tab
 
 # Least-privilege permissions required for this workflow
 permissions:
-  contents: read   # read repo contents (needed for checkout)
-  packages: write  # push images to GitHub Container Registry
-  id-token: write  # enable provenance/SLSA attestation by build-push-action
+  contents: read # read repo contents (needed for checkout)
+  packages: write # push images to GitHub Container Registry
+  id-token: write # enable provenance/SLSA attestation by build-push-action
 
 # Reusable values available to all jobs/steps
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}  # e.g. owner/repo (may be mixed-case)
+  IMAGE_NAME: ${{ github.repository }} # e.g. owner/repo (may be mixed-case)
 
 jobs:
   build-and-push:
@@ -37,7 +37,7 @@ jobs:
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}  # auto-provided token with package:write
+          password: ${{ secrets.GITHUB_TOKEN }} # auto-provided token with package:write
 
       - name: Extract version from package.json
         id: version
@@ -105,8 +105,8 @@ jobs:
           context: .
           file: ./Dockerfile
           push: true
-          provenance: true  # generate provenance (SLSA) metadata
-          sbom: true        # generate SBOM and attach to the image
+          provenance: true # generate provenance (SLSA) metadata
+          sbom: true # generate SBOM and attach to the image
           tags: ${{ steps.meta.outputs.tags }}
           labels: |
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
