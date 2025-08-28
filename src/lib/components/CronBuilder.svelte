@@ -1,6 +1,6 @@
 <script lang="ts">
-  import FieldChips from "$lib/components/FieldChips.svelte";
-  import CopyButton from "$lib/components/CopyButton.svelte";
+  import FieldChips from "$lib/ui/FieldChips.svelte";
+  import CopyButton from "$lib/ui/CopyButton.svelte";
   import {
     LIMITS,
     MONTH_NAMES,
