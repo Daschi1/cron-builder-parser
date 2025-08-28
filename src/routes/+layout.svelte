@@ -1,5 +1,6 @@
 <script lang="ts">
 	import '../app.css';
+	import Footer from '$lib/components/Footer.svelte';
 
 	function goHome(ev: MouseEvent) {
 		ev.preventDefault();
@@ -27,10 +28,10 @@
 	<meta name="theme-color" content="#0a0a0a" />
 </svelte:head>
 
-<div class="min-h-dvh bg-neutral-950 text-slate-100 scroll-smooth">
+<div class="min-h-dvh flex flex-col bg-neutral-950 text-slate-100 scroll-smooth">
 	<a href="#content"
-		 class="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-neutral-900 focus:px-3 focus:py-2 focus:text-slate-100">Skip
-		to content</a>
+			 class="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-neutral-900 focus:px-3 focus:py-2 focus:text-slate-100">Skip
+			to content</a>
 	<header
 		class="sticky top-0 z-10 border-b border-neutral-900 bg-neutral-950/80 backdrop-blur supports-[backdrop-filter]:bg-neutral-950/60">
 		<div class="mx-auto flex max-w-screen-lg items-center justify-between gap-4 px-4 py-3">
@@ -50,7 +51,8 @@
 			</nav>
 		</div>
 	</header>
-	<main id="content" class="mx-auto max-w-screen-lg px-4 py-5">
-		<slot />
-	</main>
+	<main id="content" class="mx-auto max-w-screen-lg px-4 py-5 flex-1 w-full">
+				<slot />
+			</main>
+	<Footer />
 </div>
