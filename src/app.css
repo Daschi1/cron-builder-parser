@@ -1,1 +1,13 @@
 @import 'tailwindcss';
+
+/* Offset in-page anchor targets to account for the sticky header (pure native behavior) */
+:where(:target) {
+  scroll-margin-top: 5.25rem;
+}
+
+@media (min-width: 640px) {
+  /* sm */
+  :where(:target) {
+    scroll-margin-top: 5.75rem;
+  }
+}
