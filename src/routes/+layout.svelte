@@ -1,20 +1,6 @@
 <script lang="ts">
 	import '../app.css';
 	import Footer from '$lib/components/Footer.svelte';
-
-	function goHome(ev: MouseEvent) {
-		if (typeof window !== 'undefined') {
-			const { pathname, hash, search } = window.location;
-			// Only intercept when we're already on the homepage. Otherwise, let the link navigate.
-			if (pathname === '/') {
-				ev.preventDefault();
-				if (hash) {
-					history.replaceState(history.state, '', pathname + search);
-				}
-				window.scrollTo({ top: 0, behavior: 'smooth' });
-			}
-		}
-	}
 </script>
 
 <svelte:head>
@@ -31,7 +17,7 @@
 	<meta name="theme-color" content="#0a0a0a" />
 </svelte:head>
 
-<div class="min-h-dvh flex flex-col bg-neutral-950 text-slate-100 scroll-smooth">
+<div class="min-h-dvh flex flex-col bg-neutral-950 text-slate-100">
 	<a href="#content"
 		 class="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-neutral-900 focus:px-3 focus:py-2 focus:text-slate-100"
 	>Skip to content</a>
@@ -40,7 +26,7 @@
 		<div class="mx-auto flex max-w-screen-lg items-center justify-between gap-4 px-4 py-3">
 			<a href="/"
 				 class="text-lg font-bold tracking-tight hover:text-emerald-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950 transition-colors"
-				 onclick={goHome}>Strict POSIX Cron Builder & Parser</a>
+			>Strict POSIX Cron Builder & Parser</a>
 			<nav class="flex items-center gap-2 text-sm" aria-label="Sections">
 				<a
 					class="rounded-md border border-transparent px-2 py-1 text-slate-400 hover:border-neutral-800 hover:bg-neutral-900 hover:text-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950 transition-colors"
