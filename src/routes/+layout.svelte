@@ -3,13 +3,16 @@
 	import Footer from '$lib/components/Footer.svelte';
 
 	function goHome(ev: MouseEvent) {
-		ev.preventDefault();
 		if (typeof window !== 'undefined') {
-			const url = window.location;
-			if (url.hash) {
-				history.replaceState(history.state, '', url.pathname + url.search);
+			const { pathname, hash, search } = window.location;
+			// Only intercept when we're already on the homepage. Otherwise, let the link navigate.
+			if (pathname === '/') {
+				ev.preventDefault();
+				if (hash) {
+					history.replaceState(history.state, '', pathname + search);
+				}
+				window.scrollTo({ top: 0, behavior: 'smooth' });
 			}
-			window.scrollTo({ top: 0, behavior: 'smooth' });
 		}
 	}
 </script>
@@ -30,8 +33,8 @@
 
 <div class="min-h-dvh flex flex-col bg-neutral-950 text-slate-100 scroll-smooth">
 	<a href="#content"
-			 class="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-neutral-900 focus:px-3 focus:py-2 focus:text-slate-100">Skip
-			to content</a>
+		 class="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-neutral-900 focus:px-3 focus:py-2 focus:text-slate-100"
+	>Skip to content</a>
 	<header
 		class="sticky top-0 z-10 border-b border-neutral-900 bg-neutral-950/80 backdrop-blur supports-[backdrop-filter]:bg-neutral-950/60">
 		<div class="mx-auto flex max-w-screen-lg items-center justify-between gap-4 px-4 py-3">
@@ -41,18 +44,18 @@
 			<nav class="flex items-center gap-2 text-sm" aria-label="Sections">
 				<a
 					class="rounded-md border border-transparent px-2 py-1 text-slate-400 hover:border-neutral-800 hover:bg-neutral-900 hover:text-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950 transition-colors"
-					href="#builder">Builder</a>
+					href="/#builder">Builder</a>
 				<a
 					class="rounded-md border border-transparent px-2 py-1 text-slate-400 hover:border-neutral-800 hover:bg-neutral-900 hover:text-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950 transition-colors"
-					href="#parser">Parser</a>
+					href="/#parser">Parser</a>
 				<a
 					class="rounded-md border border-transparent px-2 py-1 text-slate-400 hover:border-neutral-800 hover:bg-neutral-900 hover:text-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950 transition-colors"
-					href="#help">Help</a>
+					href="/#help">Help</a>
 			</nav>
 		</div>
 	</header>
 	<main id="content" class="mx-auto max-w-screen-lg px-4 py-5 flex-1 w-full">
-				<slot />
-			</main>
+		<slot />
+	</main>
 	<Footer />
 </div>
