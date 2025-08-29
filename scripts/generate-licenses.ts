@@ -88,14 +88,12 @@ async function generate(): Promise<LicensesPayload> {
     licenseFile: false // do not include license file path to avoid leaking absolute paths
   } satisfies Record<string, unknown>;
 
-  let packages: Record<string, LicenseCheckerPackageInfo> = await new Promise(
-    (resolve, reject) => {
-      licenseChecker.init(options, (err, results) => {
-        if (err) return reject(err);
-        resolve(results ?? {});
-      });
-    }
-  );
+  let packages: Record<string, LicenseCheckerPackageInfo> = await new Promise((resolve, reject) => {
+    licenseChecker.init(options, (err, results) => {
+      if (err) return reject(err);
+      resolve(results ?? {});
+    });
+  });
 
   // Fallback via CLI if API seems to return only the root package
   const apiKeys = Object.keys(packages ?? {});
@@ -103,16 +101,18 @@ async function generate(): Promise<LicensesPayload> {
   if (likelyOnlyRoot) {
     // Attempt via pnpm exec first
     try {
-      const { stdout } = await new Promise<{ stdout: string; stderr: string }>((resolve, reject) => {
-        exec(
-          `${process.platform === "win32" ? "pnpm.cmd" : "pnpm"} exec license-checker-rseidelsohn --json --production --development`,
-          { cwd: start, maxBuffer: 10 * 1024 * 1024 },
-          (err, stdout, stderr) => {
-            if (err) return reject(err);
-            resolve({ stdout, stderr });
-          }
-        );
-      });
+      const { stdout } = await new Promise<{ stdout: string; stderr: string }>(
+        (resolve, reject) => {
+          exec(
+            `${process.platform === "win32" ? "pnpm.cmd" : "pnpm"} exec license-checker-rseidelsohn --json --production --development`,
+            { cwd: start, maxBuffer: 10 * 1024 * 1024 },
+            (err, stdout, stderr) => {
+              if (err) return reject(err);
+              resolve({ stdout, stderr });
+            }
+          );
+        }
+      );
       const parsed = JSON.parse(stdout) as Record<string, LicenseCheckerPackageInfo>;
       const count = parsed ? Object.keys(parsed).length : 0;
       console.log(`[fallback pnpm exec] parsed ${count} entries`);
@@ -126,18 +126,22 @@ async function generate(): Promise<LicensesPayload> {
           start,
           "node_modules",
           ".bin",
-          process.platform === "win32" ? "license-checker-rseidelsohn.cmd" : "license-checker-rseidelsohn"
+          process.platform === "win32"
+            ? "license-checker-rseidelsohn.cmd"
+            : "license-checker-rseidelsohn"
         );
-        const { stdout } = await new Promise<{ stdout: string; stderr: string }>((resolve, reject) => {
-          exec(
-            `"${bin}" --json --production --development`,
-            { cwd: start, maxBuffer: 20 * 1024 * 1024 },
-            (err, stdout, stderr) => {
-              if (err) return reject(err);
-              resolve({ stdout, stderr });
-            }
-          );
-        });
+        const { stdout } = await new Promise<{ stdout: string; stderr: string }>(
+          (resolve, reject) => {
+            exec(
+              `"${bin}" --json --production --development`,
+              { cwd: start, maxBuffer: 20 * 1024 * 1024 },
+              (err, stdout, stderr) => {
+                if (err) return reject(err);
+                resolve({ stdout, stderr });
+              }
+            );
+          }
+        );
         const parsed = JSON.parse(stdout) as Record<string, LicenseCheckerPackageInfo>;
         const count = parsed ? Object.keys(parsed).length : 0;
         console.log(`[fallback .bin] parsed ${count} entries`);
@@ -152,7 +156,9 @@ async function generate(): Promise<LicensesPayload> {
     // If we still only see the root or nothing, fallback to scanning pnpm store structure
     const stillOnlyRoot = Object.keys(packages ?? {}).length <= 1;
     if (stillOnlyRoot) {
-      console.log("[fallback pnpm .pnpm scan] attempting to enumerate packages from node_modules/.pnpm");
+      console.log(
+        "[fallback pnpm .pnpm scan] attempting to enumerate packages from node_modules/.pnpm"
+      );
       const pnpmDir = path.join(start, "node_modules", ".pnpm");
       try {
         const entries = await readdir(pnpmDir, { withFileTypes: true });
@@ -186,11 +192,13 @@ async function generate(): Promise<LicensesPayload> {
                     const raw = await readFile(pkgJsonPath, "utf8");
                     const pj = JSON.parse(raw);
                     const lic = normalizeLicense(pj.license?.type ?? pj.license ?? pj.licenses);
-                    const repository = typeof pj.repository === "string" ? pj.repository : pj.repository?.url;
+                    const repository =
+                      typeof pj.repository === "string" ? pj.repository : pj.repository?.url;
                     result[`${pj.name}@${pj.version}`] = {
                       licenses: lic,
                       repository: repository ?? null,
-                      publisher: (typeof pj.author === "string" ? pj.author : pj.author?.name) ?? null,
+                      publisher:
+                        (typeof pj.author === "string" ? pj.author : pj.author?.name) ?? null,
                       email: (typeof pj.author === "object" ? pj.author?.email : null) ?? null,
                       url: pj.homepage ?? null
                     };
@@ -208,11 +216,13 @@ async function generate(): Promise<LicensesPayload> {
                   const raw = await readFile(pkgJsonPath, "utf8");
                   const pj = JSON.parse(raw);
                   const lic = normalizeLicense(pj.license?.type ?? pj.license ?? pj.licenses);
-                  const repository = typeof pj.repository === "string" ? pj.repository : pj.repository?.url;
+                  const repository =
+                    typeof pj.repository === "string" ? pj.repository : pj.repository?.url;
                   result[`${pj.name}@${pj.version}`] = {
                     licenses: lic,
                     repository: repository ?? null,
-                    publisher: (typeof pj.author === "string" ? pj.author : pj.author?.name) ?? null,
+                    publisher:
+                      (typeof pj.author === "string" ? pj.author : pj.author?.name) ?? null,
                     email: (typeof pj.author === "object" ? pj.author?.email : null) ?? null,
                     url: pj.homepage ?? null
                   };
@@ -234,28 +244,40 @@ async function generate(): Promise<LicensesPayload> {
     }
   }
 
-  const pkgJson = requireCjs(path.join(start, "package.json"));
-  const rootName: string | undefined = pkgJson?.name;
+  // Ensure the root project itself is included (fallback scans may omit it)
+  try {
+    const pj = requireCjs(path.join(start, "package.json"));
+    if (pj?.name && pj?.version) {
+      const repository = typeof pj.repository === "string" ? pj.repository : pj.repository?.url;
+      const rootLic = normalizeLicense(
+        pj.license?.type ?? pj.license ?? pj.licenses ?? (pj.private ? "UNLICENSED" : undefined)
+      );
+      packages[`${pj.name}@${pj.version}`] = {
+        licenses: rootLic,
+        repository: repository ?? null,
+        publisher: (typeof pj.author === "string" ? pj.author : pj.author?.name) ?? null,
+        email: (typeof pj.author === "object" ? pj.author?.email : null) ?? null,
+        url: pj.homepage ?? null
+      };
+    }
+  } catch {
+    // ignore if package.json is missing or unreadable
+  }
 
-  const items: LicensePackage[] = Object.entries(packages)
-    .filter(([key]) => {
-      if (!rootName) return true;
-      const { name } = parseKey(key);
-      return name !== rootName; // exclude the root project itself
-    })
-    .map(([key, info]) => {
-      const { name, version } = parseKey(key);
-      const license = normalizeLicense(info.licenses);
-      return {
-        name,
-        version,
-        license,
-        repository: info.repository ?? null,
-        publisher: info.publisher ?? null,
-        email: info.email ?? null,
-        url: info.url ?? info.homepage ?? null
-      } satisfies LicensePackage;
-    });
+  // Include all packages, including the root project itself
+  const items: LicensePackage[] = Object.entries(packages).map(([key, info]) => {
+    const { name, version } = parseKey(key);
+    const license = normalizeLicense(info.licenses);
+    return {
+      name,
+      version,
+      license,
+      repository: info.repository ?? null,
+      publisher: info.publisher ?? null,
+      email: info.email ?? null,
+      url: info.url ?? info.homepage ?? null
+    } satisfies LicensePackage;
+  });
 
   // Build a summary by license type
   const byLicense = items.reduce<Record<string, number>>((acc, it) => {
