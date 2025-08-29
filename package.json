@@ -1,7 +1,7 @@
 {
   "name": "cron-builder-parser",
   "private": true,
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "Strict POSIX cron: Builder & Parser (SvelteKit app)",
   "author": "Daschi (https://github.com/Daschi1)",
   "repository": {
