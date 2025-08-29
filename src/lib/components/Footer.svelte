@@ -1,8 +1,12 @@
+<script lang="ts">
+  import Container from "$lib/ui/Container.svelte";
+</script>
+
 <footer
   class="border-t border-neutral-900 bg-neutral-950/80 pb-[env(safe-area-inset-bottom)] backdrop-blur supports-[backdrop-filter]:bg-neutral-950/60"
 >
-  <div
-    class="mx-auto flex max-w-screen-lg flex-row flex-wrap items-center justify-between gap-x-3 gap-y-2 px-4 py-4 text-sm text-slate-400"
+  <Container
+    class="flex flex-row flex-wrap items-center justify-between gap-x-3 gap-y-2 py-4 text-sm text-slate-400"
   >
     <nav class="flex items-center gap-3" aria-label="Footer">
       <a
@@ -31,5 +35,5 @@
         Daschi
       </a>
     </p>
-  </div>
+  </Container>
 </footer>

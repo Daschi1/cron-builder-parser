@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Button from "$lib/ui/Button.svelte";
   let {
     text,
     label = "Copy",
@@ -35,14 +36,9 @@
   }
 </script>
 
-<button
-  type="button"
-  class="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm font-semibold transition-colors hover:brightness-110 focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950 focus-visible:outline-none"
-  {title}
-  onclick={copy}
->
+<Button onclick={copy} {title}>
   {label}
-</button>
+</Button>
 {#if status}
   <span class="ml-2 text-xs text-emerald-400" role="status" aria-live="polite">{status}</span>
 {/if}

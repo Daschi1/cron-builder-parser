@@ -16,7 +16,7 @@ RUN pnpm fetch
 # Copy the rest of the sources
 COPY . .
 
-# Install deps from store and build
+# Install deps from store and build (postinstall will automatically generate licenses.json)
 RUN pnpm install --frozen-lockfile --offline \
     && pnpm build \
     && pnpm prune --prod

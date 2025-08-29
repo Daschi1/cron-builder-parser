@@ -10,6 +10,9 @@
     buildCron,
     humanize
   } from "$lib/utils/cron";
+  import Card from "$lib/ui/Card.svelte";
+  import Button from "$lib/ui/Button.svelte";
+  import SectionLabel from "$lib/ui/SectionLabel.svelte";
 
   // Builder state using Svelte 5 runes
   let minute = $state<FieldSpec>(emptyFields().minute);
@@ -46,9 +49,9 @@
 </script>
 
 <section id="builder" class="space-y-4">
-  <h2 class="text-xs tracking-widest text-slate-400 uppercase">Builder</h2>
+  <SectionLabel>Builder</SectionLabel>
 
-  <div class="space-y-5 rounded-xl border border-neutral-800 bg-neutral-950 p-4">
+  <Card class="space-y-5">
     <div class="grid gap-4 md:grid-cols-2">
       <div>
         <p class="mb-2 text-xs tracking-wider text-slate-400 uppercase">Time</p>
@@ -107,17 +110,11 @@
           >
           <CopyButton text={cronOut} label="Copy" title="Copy cron expression" />
         </div>
-        <button
-          type="button"
-          class="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm font-semibold transition-colors hover:brightness-110 focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950 focus-visible:outline-none"
-          title="Reset all fields to Every"
-          aria-label="Reset to Every"
-          onclick={resetAll}
+        <Button title="Reset all fields to Every" ariaLabel="Reset to Every" onclick={resetAll}
+          >Reset</Button
         >
-          Reset
-        </button>
       </div>
       <div class="text-emerald-200">{humanOut}</div>
     </div>
-  </div>
+  </Card>
 </section>
