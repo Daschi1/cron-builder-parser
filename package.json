@@ -2,6 +2,24 @@
   "name": "cron-builder-parser",
   "private": true,
   "version": "1.2.0",
+  "description": "Strict POSIX cron: Builder & Parser (SvelteKit app)",
+  "author": "Daschi (https://github.com/Daschi1)",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Daschi1/cron-builder-parser.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Daschi1/cron-builder-parser/issues"
+  },
+  "homepage": "https://github.com/Daschi1/cron-builder-parser#readme",
+  "keywords": [
+    "cron",
+    "posix",
+    "svelte",
+    "sveltekit",
+    "parser",
+    "builder"
+  ],
   "type": "module",
   "engines": {
     "node": ">=22"
