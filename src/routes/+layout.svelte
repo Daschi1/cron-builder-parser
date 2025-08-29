@@ -2,6 +2,8 @@
   import "../app.css";
   import Footer from "$lib/components/Footer.svelte";
   import Header from "$lib/components/Header.svelte";
+  import Container from "$lib/ui/Container.svelte";
+  let { children } = $props<{ children?: () => unknown }>();
 </script>
 
 <svelte:head>
@@ -25,8 +27,8 @@
     >Skip to content</a
   >
   <Header />
-  <main id="content" class="mx-auto w-full max-w-screen-lg flex-1 px-4 py-5">
-    <slot />
-  </main>
+  <Container as="main" id="content" class="flex-1 py-5">
+    {@render children?.()}
+  </Container>
   <Footer />
 </div>
