@@ -76,11 +76,13 @@
 
       <Card class="p-0">
         {#if filtered().length === 0}
-          <p class="p-4 text-sm text-slate-400">No packages match your search.</p>
+          <div class="flex min-h-16 items-center p-4">
+            <p class="text-sm text-slate-400">No packages match your search.</p>
+          </div>
         {:else}
           <ul>
             {#each filtered() as p (p.name + "@" + p.version)}
-              <li class="border-b border-neutral-900 p-4 last:border-b-0">
+              <li class="min-h-16 border-b border-neutral-900 p-4 last:border-b-0">
                 <div class="flex flex-col gap-1">
                   <div class="flex flex-wrap items-center justify-between gap-2">
                     <p class="font-mono text-slate-100">
