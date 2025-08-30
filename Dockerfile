@@ -18,6 +18,7 @@ COPY . .
 
 # Install deps from store and build (postinstall will automatically generate licenses.json)
 RUN pnpm install --frozen-lockfile --offline \
+    && pnpm gen:licenses \
     && pnpm build \
     && pnpm prune --prod
 
