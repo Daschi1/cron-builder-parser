@@ -1,39 +1,38 @@
-# GitHub Actions workflow: Build and publish a Docker image to GHCR on push to main
-name: Build and Publish Docker Image
+# GitHub Actions workflow: CI on PRs; Publish Docker image and Release on main
+name: CI and Publish (Docker + Release)
 
 on:
   push:
-    branches: [ main ] # Trigger when commits land on main
+    branches: [main] # Run CI and publish when commits land on main
   pull_request:
-    branches: [ main ] # Validate PRs targeting main
+    branches: [main] # Run CI for PRs targeting main
   workflow_dispatch: # Allow manual runs from the Actions tab
 
-# Least-privilege permissions required for this workflow
+# Least-privilege permissions required
 permissions:
   contents: write # needed to create GitHub releases (read is sufficient for checkout)
   packages: write # push images to GitHub Container Registry
   id-token: write # enable provenance/SLSA attestation by build-push-action
 
-# Reusable values available to all jobs/steps
+# Shared values
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }} # e.g. owner/repo (may be mixed-case)
 
 jobs:
-  build-and-push:
-    name: Build and push to GHCR
+  ci:
+    name: CI (format, lint, check, gen:licenses, build)
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # --- Quality gates: install and run pnpm tasks before any Docker build ---
+      # Quality gates with pnpm
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: 'pnpm'
+          cache: "pnpm"
 
       - name: Set up pnpm
         uses: pnpm/action-setup@v4
@@ -84,16 +83,22 @@ jobs:
           pnpm build
           echo "::endgroup::"
 
+  publish:
+    name: Publish Docker image and GitHub Release
+    needs: ci
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Set up QEMU (for multi-arch builds)
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: docker/setup-buildx-action@v3
 
       - name: Log in to GHCR
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
@@ -101,12 +106,10 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }} # auto-provided token with package:write
 
       - name: Extract version from package.json
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         id: version
         shell: bash
         run: |
           echo "::group::Read version from package.json"
-          # Read the semver (x.y.z) from package.json and split into parts
           VERSION=$(jq -r .version package.json)
           echo "Detected version: ${VERSION}"
           if [[ -z "$VERSION" || "$VERSION" == "null" ]]; then
@@ -117,20 +120,16 @@ jobs:
           IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION"
           echo "Parsed parts => MAJOR=${MAJOR}, MINOR=${MINOR}, PATCH=${PATCH}"
           echo "::endgroup::"
-          # Expose outputs for downstream steps
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "major=$MAJOR" >> $GITHUB_OUTPUT
           echo "minor=$MINOR" >> $GITHUB_OUTPUT
           echo "patch=$PATCH" >> $GITHUB_OUTPUT
 
       - name: Compute tags
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         id: meta
         shell: bash
         run: |
           echo "::group::Compute image reference and tags"
-          # Compose the full image reference and tag set
-          # Lowercase the owner/repo to satisfy Docker/OCI naming rules
           IMAGE_NAME_LOWER=$(echo "${{ env.IMAGE_NAME }}" | tr '[:upper:]' '[:lower:]')
           IMAGE_REF=${{ env.REGISTRY }}/${IMAGE_NAME_LOWER}
           MAJOR=${{ steps.version.outputs.major }}
@@ -144,31 +143,28 @@ jobs:
           echo "Using version parts => MAJOR=${MAJOR}, MINOR=${MINOR}, PATCH=${PATCH}"
 
           TAGS=(
-            "${IMAGE_REF}:latest"          # always update latest
-            "${IMAGE_REF}:${MAJOR}"        # major tag, e.g. 1
-            "${IMAGE_REF}:${MAJOR}.${MINOR}"  # minor tag, e.g. 1.2
-            "${IMAGE_REF}:${VERSION}"      # full semver, e.g. 1.2.3
+            "${IMAGE_REF}:latest"
+            "${IMAGE_REF}:${MAJOR}"
+            "${IMAGE_REF}:${MAJOR}.${MINOR}"
+            "${IMAGE_REF}:${VERSION}"
           )
 
           echo "Planned tags:"
           for t in "${TAGS[@]}"; do echo " - ${t}"; done
 
-          # Join tags with comma for build-push-action
           TAGS_CSV=$(IFS=, ; echo "${TAGS[*]}")
           echo "tags=$TAGS_CSV" >> $GITHUB_OUTPUT
-          # Also expose normalized values for later steps
           echo "image_name_lower=${IMAGE_NAME_LOWER}" >> $GITHUB_OUTPUT
           echo "image_ref=${IMAGE_REF}" >> $GITHUB_OUTPUT
           echo "Computed tags CSV: ${TAGS_CSV}"
           echo "::endgroup::"
 
-      - name: Build (and push on main)
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+      - name: Build and push
         uses: docker/build-push-action@v6
         with:
           context: .
           file: ./Dockerfile
-          push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+          push: true
           provenance: true # generate provenance (SLSA) metadata
           sbom: true # generate SBOM and attach to the image
           tags: ${{ steps.meta.outputs.tags }}
@@ -176,12 +172,10 @@ jobs:
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
             org.opencontainers.image.revision=${{ github.sha }}
             org.opencontainers.image.version=${{ steps.version.outputs.version }}
-          # Enable build cache stored in GHCR for faster rebuilds
           cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ steps.meta.outputs.image_name_lower }}:buildcache
           cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ steps.meta.outputs.image_name_lower }}:buildcache,mode=max
 
       - name: Create GitHub Release
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ steps.version.outputs.version }}
@@ -189,16 +183,11 @@ jobs:
           generate_release_notes: true
 
       - name: Summarize publish details
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         shell: bash
         run: |
           echo "## Docker Image Build Summary" >> "$GITHUB_STEP_SUMMARY"
           echo "Repository: ${{ env.REGISTRY }}/${{ steps.meta.outputs.image_name_lower }}" >> "$GITHUB_STEP_SUMMARY"
           echo "Version: ${{ steps.version.outputs.version }}" >> "$GITHUB_STEP_SUMMARY"
-          if [[ "${{ github.event_name }}" == "push" && "${{ github.ref }}" == "refs/heads/main" ]]; then
-            echo "Action: Pushed the following tags:" >> "$GITHUB_STEP_SUMMARY"
-            IFS=',' read -ra TAGS_ARR <<< "${{ steps.meta.outputs.tags }}"
-            for t in "${TAGS_ARR[@]}"; do echo "- $t" >> "$GITHUB_STEP_SUMMARY"; done
-          else
-            echo "Action: Build completed without publishing (pull_request or non-main)." >> "$GITHUB_STEP_SUMMARY"
-          fi
+          echo "Action: Pushed the following tags:" >> "$GITHUB_STEP_SUMMARY"
+          IFS=',' read -ra TAGS_ARR <<< "${{ steps.meta.outputs.tags }}"
+          for t in "${TAGS_ARR[@]}"; do echo "- $t" >> "$GITHUB_STEP_SUMMARY"; done
