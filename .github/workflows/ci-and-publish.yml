@@ -61,6 +61,16 @@ jobs:
           pnpm --version
           echo "::endgroup::"
 
+      - name: Configure pnpm store for actions cache
+        shell: bash
+        run: |
+          echo "::group::Configure pnpm store path (~/.pnpm-store)"
+          PNPM_STORE_DIR="$HOME/.pnpm-store"
+          mkdir -p "$PNPM_STORE_DIR"
+          pnpm config set store-dir "$PNPM_STORE_DIR"
+          echo "pnpm store-dir => $(pnpm config get store-dir)"
+          echo "::endgroup::"
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
