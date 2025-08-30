@@ -10,7 +10,7 @@ on:
 
 # Least-privilege permissions required for this workflow
 permissions:
-  contents: read # read repo contents (needed for checkout)
+  contents: write # needed to create GitHub releases (read is sufficient for checkout)
   packages: write # push images to GitHub Container Registry
   id-token: write # enable provenance/SLSA attestation by build-push-action
 
@@ -179,6 +179,14 @@ jobs:
           # Enable build cache stored in GHCR for faster rebuilds
           cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ steps.meta.outputs.image_name_lower }}:buildcache
           cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ steps.meta.outputs.image_name_lower }}:buildcache,mode=max
+
+      - name: Create GitHub Release
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.version.outputs.version }}
+          name: "${{ steps.version.outputs.version }} version"
+          generate_release_notes: true
 
       - name: Summarize publish details
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
