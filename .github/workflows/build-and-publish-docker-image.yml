@@ -3,7 +3,9 @@ name: Build and Publish Docker Image
 
 on:
   push:
-    branches: [main] # Trigger when commits land on main
+    branches: [ main ] # Trigger when commits land on main
+  pull_request:
+    branches: [ main ] # Validate PRs targeting main
   workflow_dispatch: # Allow manual runs from the Actions tab
 
 # Least-privilege permissions required for this workflow
@@ -26,13 +28,72 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # --- Quality gates: install and run pnpm tasks before any Docker build ---
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'pnpm'
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.15.0
+          run_install: false
+
+      - name: Install dependencies
+        shell: bash
+        run: |
+          echo "::group::pnpm install"
+          pnpm --version
+          pnpm install --frozen-lockfile
+          echo "::endgroup::"
+
+      - name: Run format
+        shell: bash
+        run: |
+          echo "::group::pnpm format"
+          pnpm format
+          echo "::endgroup::"
+
+      - name: Run lint
+        shell: bash
+        run: |
+          echo "::group::pnpm lint"
+          pnpm lint
+          echo "::endgroup::"
+
+      - name: Run type check
+        shell: bash
+        run: |
+          echo "::group::pnpm check"
+          pnpm check
+          echo "::endgroup::"
+
+      - name: Generate licenses
+        shell: bash
+        run: |
+          echo "::group::pnpm gen:licenses"
+          pnpm run gen:licenses
+          echo "::endgroup::"
+
+      - name: Build app
+        shell: bash
+        run: |
+          echo "::group::pnpm build"
+          pnpm build
+          echo "::endgroup::"
+
       - name: Set up QEMU (for multi-arch builds)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: docker/setup-buildx-action@v3
 
       - name: Log in to GHCR
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
@@ -40,6 +101,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }} # auto-provided token with package:write
 
       - name: Extract version from package.json
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         id: version
         shell: bash
         run: |
@@ -62,6 +124,7 @@ jobs:
           echo "patch=$PATCH" >> $GITHUB_OUTPUT
 
       - name: Compute tags
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         id: meta
         shell: bash
         run: |
@@ -99,12 +162,13 @@ jobs:
           echo "Computed tags CSV: ${TAGS_CSV}"
           echo "::endgroup::"
 
-      - name: Build and push
+      - name: Build (and push on main)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: docker/build-push-action@v6
         with:
           context: .
           file: ./Dockerfile
-          push: true
+          push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
           provenance: true # generate provenance (SLSA) metadata
           sbom: true # generate SBOM and attach to the image
           tags: ${{ steps.meta.outputs.tags }}
@@ -117,12 +181,16 @@ jobs:
           cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ steps.meta.outputs.image_name_lower }}:buildcache,mode=max
 
       - name: Summarize publish details
-        if: always()
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         shell: bash
         run: |
-          echo "## Docker Image Publish Summary" >> "$GITHUB_STEP_SUMMARY"
+          echo "## Docker Image Build Summary" >> "$GITHUB_STEP_SUMMARY"
           echo "Repository: ${{ env.REGISTRY }}/${{ steps.meta.outputs.image_name_lower }}" >> "$GITHUB_STEP_SUMMARY"
           echo "Version: ${{ steps.version.outputs.version }}" >> "$GITHUB_STEP_SUMMARY"
-          echo "Tags pushed:" >> "$GITHUB_STEP_SUMMARY"
-          IFS=',' read -ra TAGS_ARR <<< "${{ steps.meta.outputs.tags }}"
-          for t in "${TAGS_ARR[@]}"; do echo "- $t" >> "$GITHUB_STEP_SUMMARY"; done
+          if [[ "${{ github.event_name }}" == "push" && "${{ github.ref }}" == "refs/heads/main" ]]; then
+            echo "Action: Pushed the following tags:" >> "$GITHUB_STEP_SUMMARY"
+            IFS=',' read -ra TAGS_ARR <<< "${{ steps.meta.outputs.tags }}"
+            for t in "${TAGS_ARR[@]}"; do echo "- $t" >> "$GITHUB_STEP_SUMMARY"; done
+          else
+            echo "Action: Build completed without publishing (pull_request or non-main)." >> "$GITHUB_STEP_SUMMARY"
+          fi
