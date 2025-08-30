@@ -27,17 +27,51 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # Quality gates with pnpm
+      - name: Read tool versions from package.json
+        id: tool-versions
+        shell: bash
+        run: |
+          echo "::group::Read Node and pnpm versions from package.json"
+          NODE_ENGINE=$(jq -r '.engines.node // ""' package.json)
+          if [[ -z "$NODE_ENGINE" || "$NODE_ENGINE" == "null" ]]; then
+            NODE_VERSION="22"
+          else
+            NODE_VERSION=$(echo "$NODE_ENGINE" | grep -oE '[0-9]+' | head -1)
+            if [[ -z "$NODE_VERSION" ]]; then NODE_VERSION="22"; fi
+          fi
+          PM=$(jq -r '.packageManager // ""' package.json)
+          if [[ -z "$PM" || "$PM" == "null" ]]; then
+            PNPM_VERSION="10.15.0"
+          else
+            PNPM_VERSION=$(echo "$PM" | sed -n 's/^pnpm@\([0-9][^ ]*\).*$/\1/p')
+            if [[ -z "$PNPM_VERSION" ]]; then PNPM_VERSION="10.15.0"; fi
+          fi
+          echo "Node engines: $NODE_ENGINE -> using $NODE_VERSION"
+          echo "packageManager: $PM -> pnpm $PNPM_VERSION"
+          echo "node=$NODE_VERSION" >> $GITHUB_OUTPUT
+          echo "pnpm=$PNPM_VERSION" >> $GITHUB_OUTPUT
+          echo "::endgroup::"
+
+      - name: Enable Corepack and pnpm
+        shell: bash
+        run: |
+          echo "::group::Enable Corepack and prepare pnpm"
+          corepack enable
+          corepack prepare pnpm@${{ steps.tool-versions.outputs.pnpm }} --activate
+          pnpm --version
+          echo "::endgroup::"
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: ${{ steps.tool-versions.outputs.node }}
           cache: "pnpm"
+          cache-dependency-path: pnpm-lock.yaml
 
       - name: Set up pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 10.15.0
+          version: ${{ steps.tool-versions.outputs.pnpm }}
           run_install: false
 
       - name: Install dependencies
