@@ -40,5 +40,10 @@
   {label}
 </Button>
 {#if status}
-  <span class="ml-2 text-xs text-emerald-400" role="status" aria-live="polite">{status}</span>
+  <span
+    class={`ml-2 text-xs ${status === "Copied" ? "text-emerald-400" : "text-rose-400"}`}
+    role="status"
+    aria-live="polite"
+    aria-atomic="true">{status}</span
+  >
 {/if}

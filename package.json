@@ -1,7 +1,7 @@
 {
   "name": "cron-builder-parser",
   "private": true,
-  "version": "1.4.0",
+  "version": "1.4.1",
   "description": "Strict POSIX cron: Builder & Parser",
   "author": "Daschi (https://github.com/Daschi1)",
   "repository": {
