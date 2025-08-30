@@ -6,7 +6,7 @@
   "author": "Daschi (https://github.com/Daschi1)",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Daschi1/cron-builder-parser.git"
+    "url": "https://github.com/Daschi1/cron-builder-parser.git"
   },
   "bugs": {
     "url": "https://github.com/Daschi1/cron-builder-parser/issues"
