@@ -6,6 +6,7 @@
   import SectionLabel from "$lib/ui/SectionLabel.svelte";
   import type { PageData } from "./$types";
   import type { LicensePkg, LicensesFile } from "./+page";
+  import { sanitizeUrl } from "$lib/utils/url";
 
   let { data } = $props<{ data: PageData }>();
   let q = $state("");
@@ -48,6 +49,14 @@
     }
   }
 </script>
+
+<svelte:head>
+  <title>Strict POSIX cron: Licenses</title>
+  <meta
+    name="description"
+    content="Browse the open-source licenses and metadata for the dependencies used by Strict POSIX cron builder & parser. Search packages, licenses, repos, and more."
+  />
+</svelte:head>
 
 <section class="space-y-5 py-2">
   <h1 class="text-2xl font-semibold tracking-tight">Licenses</h1>
@@ -119,18 +128,18 @@
                     >
                   </div>
                   <div class="flex flex-wrap items-center gap-3 text-xs text-slate-400">
-                    {#if p.repository}
+                    {#if sanitizeUrl(p.repository)}
                       <a
                         class="text-emerald-300 underline underline-offset-2 hover:text-emerald-200"
-                        href={p.repository}
+                        href={sanitizeUrl(p.repository)}
                         target="_blank"
                         rel="noopener noreferrer">repo</a
                       >
                     {/if}
-                    {#if p.homepage}
+                    {#if sanitizeUrl(p.homepage)}
                       <a
                         class="text-emerald-300 underline underline-offset-2 hover:text-emerald-200"
-                        href={p.homepage}
+                        href={sanitizeUrl(p.homepage)}
                         target="_blank"
                         rel="noopener noreferrer">homepage</a
                       >

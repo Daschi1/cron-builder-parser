@@ -5,6 +5,14 @@
   import SectionLabel from "$lib/ui/SectionLabel.svelte";
 </script>
 
+<svelte:head>
+  <title>Strict POSIX cron: Builder & Parser</title>
+  <meta
+    name="description"
+    content="Build and validate strict POSIX 5‑field cron expressions. Interactive cron builder, parser, and help with exact ranges and POSIX behavior (no steps, names, or macros)."
+  />
+</svelte:head>
+
 <div class="space-y-5">
   <CronBuilder />
   <CronParser />

@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { FieldSpec } from "$lib/utils/cron";
-  import { toggleValue, setEvery } from "$lib/utils/cron";
+  import { setEvery, toggleValue } from "$lib/utils/cron";
   import { onMount, tick } from "svelte";
 
   let {
@@ -25,14 +25,9 @@
     title: string; // tooltip
   };
 
-  let containerEl: HTMLDivElement | null = null;
-  let measureEl: HTMLDivElement | null = null;
-  let rows: number[][] = $state([]);
   let items: Item[] = $state([]);
-  let widths: number[] = $state([]);
-  let containerWidth = $state(0);
-
-  const GAP_PX = 8; // Tailwind gap-2
+  let containerEl: HTMLDivElement | null = null;
+  let chipW: number | null = $state(null);
 
   function buildItems(): Item[] {
     const out: Item[] = [];
@@ -55,77 +50,39 @@
     return out;
   }
 
-  async function measure() {
-    if (!measureEl) return;
-    // Ensure DOM is updated
-    await tick();
-    const btns = Array.from(measureEl.querySelectorAll("button"));
-    widths = btns.map((b) => Math.ceil(b.getBoundingClientRect().width));
-  }
-
-  function packRows() {
-    if (!containerWidth || widths.length !== items.length) {
-      rows = [items.map((_, i) => i)];
-      return;
-    }
-    const maxWidth = containerWidth;
-    const out: number[][] = [];
-    let i = 0;
-    let prevRowWidth = Number.POSITIVE_INFINITY;
-    while (i < items.length) {
-      let row: number[] = [];
-      let used = 0;
-      const limit = Math.min(maxWidth, prevRowWidth);
-      while (i < items.length) {
-        const w = widths[i];
-        const nextUsed = row.length === 0 ? w : used + GAP_PX + w;
-        if (nextUsed <= limit) {
-          row.push(i);
-          used = nextUsed;
-          i++;
-        } else {
-          break;
-        }
-      }
-      if (row.length === 0) {
-        // Fallback to place one item to avoid infinite loop
-        row.push(i);
-        used = widths[i] || 0;
-        i++;
-      }
-      out.push(row);
-      prevRowWidth = used;
-    }
-    rows = out;
-  }
-
   function recalc() {
     items = buildItems();
   }
 
+  async function applyUniformWidth() {
+    await tick();
+    const root = containerEl;
+    if (!root) return;
+    const btns = Array.from(root.querySelectorAll<HTMLButtonElement>('button[data-kind="value"]'));
+    if (btns.length === 0) {
+      chipW = null;
+      return;
+    }
+    const widths = btns.map((b) => Math.ceil(b.getBoundingClientRect().width));
+    chipW = Math.max(...widths);
+  }
+
   let ro: ResizeObserver | null = null;
   onMount(() => {
-    recalc();
-    // Observe container for width changes (including responsive font-size changes)
-    ro = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        containerWidth = Math.floor(entry.contentRect.width);
-        // Re-measure because media queries may alter widths
-        measure().then(packRows);
-      }
+    // Initial calc when mounted
+    applyUniformWidth();
+    ro = new ResizeObserver(() => {
+      applyUniformWidth();
     });
     if (containerEl) ro.observe(containerEl);
-    // Initial measure/pack
-    measure().then(packRows);
     return () => {
       if (ro && containerEl) ro.unobserve(containerEl);
       ro = null;
     };
   });
 
-  // Recompute items and re-measure when props change
+  // Recompute items when inputs change
   $effect(() => {
-    // Depend on labels, min, max
     const _l = labels ? labels.join("|") : "";
     const _min = min;
     const _max = max;
@@ -133,18 +90,17 @@
     void _min;
     void _max;
     recalc();
-    // After items update, measure and pack
-    measure().then(packRows);
+    // After items change, recompute max width
+    applyUniformWidth();
   });
 
-  // Repack when selection may visually affect layout (unlikely, but safe)
+  // Also re-apply on selection changes (pressed styles can slightly affect width)
   $effect(() => {
     const any = spec.any;
     const count = spec.values.length;
     void any;
     void count;
-    // No need to rebuild items; just pack in case slight width changes occur
-    measure().then(packRows);
+    applyUniformWidth();
   });
 
   function onEvery() {
@@ -159,49 +115,32 @@
 <div class="space-y-2">
   <div class="text-sm font-semibold text-slate-300">{title}</div>
 
-  <!-- Measurement container (offscreen, invisible) -->
-  <div class="invisible absolute top-0 left-0 -z-50">
-    <div class="flex gap-2" bind:this={measureEl} aria-hidden="true">
-      {#each items as it (it.key)}
+  <div class="flex w-full flex-wrap items-start gap-2" bind:this={containerEl}>
+    {#each items as it (it.key)}
+      {#if it.type === "every"}
         <button
           type="button"
-          class="chip cursor-pointer rounded-md border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm font-medium md:px-2.5 md:py-1.5 md:text-xs"
+          data-kind="every"
+          class="chip inline-flex cursor-pointer items-center justify-center rounded-md border border-neutral-800 bg-neutral-900 px-3 py-2 text-center font-mono text-sm font-medium whitespace-nowrap transition-colors hover:bg-neutral-800 hover:brightness-110 focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950 focus-visible:outline-none aria-pressed:border-emerald-500 aria-pressed:bg-emerald-900/40 aria-pressed:text-emerald-200 md:px-2.5 md:py-1.5"
+          aria-pressed={spec.any}
+          onclick={onEvery}
+          title={it.title}
         >
           {it.text}
         </button>
-      {/each}
-    </div>
-  </div>
-
-  <!-- Visible rows container -->
-  <div class="flex w-full flex-col items-start gap-2" bind:this={containerEl}>
-    {#each rows as row, rIdx (rIdx)}
-      <div class="flex gap-2">
-        {#each row as idx (idx)}
-          {#if items[idx].type === "every"}
-            <button
-              type="button"
-              class="chip cursor-pointer rounded-md border border-neutral-800 bg-neutral-900 px-3 py-2 text-center text-sm font-medium transition-colors hover:bg-neutral-800 hover:brightness-110 focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950 focus-visible:outline-none aria-pressed:border-emerald-500 aria-pressed:bg-emerald-900/40 aria-pressed:text-emerald-200 md:px-2.5 md:py-1.5 md:text-xs"
-              aria-pressed={spec.any}
-              onclick={onEvery}
-              title={items[idx].title}
-              >{items[idx].text}
-            </button>
-          {:else}
-            <button
-              type="button"
-              class="chip cursor-pointer rounded-md border border-neutral-800 bg-neutral-900 px-3 py-2 text-center text-sm font-medium transition-colors hover:bg-neutral-800 hover:brightness-110 focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950 focus-visible:outline-none aria-pressed:border-emerald-500 aria-pressed:bg-emerald-900/40 aria-pressed:text-emerald-200 md:px-2.5 md:py-1.5 md:text-xs"
-              aria-pressed={!spec.any &&
-                items[idx].value !== undefined &&
-                spec.values.includes(items[idx].value)}
-              onclick={() => items[idx].value !== undefined && onToggle(items[idx].value)}
-              title={items[idx].title}
-            >
-              {items[idx].text}
-            </button>
-          {/if}
-        {/each}
-      </div>
+      {:else}
+        <button
+          type="button"
+          data-kind="value"
+          class="chip inline-flex flex-none cursor-pointer items-center justify-center rounded-md border border-neutral-800 bg-neutral-900 px-3 py-2 text-center font-mono text-sm font-medium whitespace-nowrap transition-colors hover:bg-neutral-800 hover:brightness-110 focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950 focus-visible:outline-none aria-pressed:border-emerald-500 aria-pressed:bg-emerald-900/40 aria-pressed:text-emerald-200 md:px-2.5 md:py-1.5"
+          style:width={chipW ? chipW + "px" : null}
+          aria-pressed={!spec.any && it.value !== undefined && spec.values.includes(it.value)}
+          onclick={() => it.value !== undefined && onToggle(it.value)}
+          title={it.title}
+        >
+          {it.text}
+        </button>
+      {/if}
     {/each}
   </div>
 </div>

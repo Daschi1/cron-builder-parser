@@ -1,5 +1,6 @@
 <script lang="ts">
   import Container from "$lib/ui/Container.svelte";
+  import FancyHeart from "$lib/ui/FancyHeart.svelte";
 </script>
 
 <footer
@@ -24,8 +25,8 @@
         Licenses
       </a>
     </nav>
-    <p class="text-slate-400">
-      Created with <span aria-hidden="true">❤️</span><span class="sr-only">love</span> by
+    <p class="love-line text-slate-400">
+      Created with <FancyHeart title="Love" /><span class="sr-only">love</span> by
       <a
         class="text-emerald-300 underline underline-offset-2 transition-colors hover:text-emerald-200 focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950 focus-visible:outline-none"
         href="https://github.com/Daschi1"
