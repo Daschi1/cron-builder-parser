@@ -3,12 +3,27 @@
   import Footer from "$lib/components/Footer.svelte";
   import Header from "$lib/components/Header.svelte";
   import Container from "$lib/ui/Container.svelte";
+  import { page } from "$app/state";
+
   let { children } = $props<{ children?: () => unknown }>();
+
+  // Build canonical URL from current page without query/hash
+  const canonical = $derived.by(() => {
+    const u = page.url;
+    if (!u) return "";
+    const href = `${u.origin}${u.pathname}`;
+    // Normalize double slashes and trailing slash (keep root slash)
+    return href.replace(/\/+$/, u.pathname === "/" ? "/" : "");
+  });
 </script>
 
 <svelte:head>
-  <title>Strict POSIX cron: Builder & Parser</title>
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <link rel="canonical" href={canonical} />
+  <meta
+    name="robots"
+    content="index,follow,max-snippet:-1,max-image-preview:large,max-video-preview:-1"
+  />
 
   <!-- Hint to user agents that the page uses a dark color scheme so built-in UI
 			 (form controls, scrollbars, etc.) renders appropriately -->

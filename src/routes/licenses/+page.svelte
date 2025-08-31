@@ -50,6 +50,14 @@
   }
 </script>
 
+<svelte:head>
+  <title>Strict POSIX cron: Licenses</title>
+  <meta
+    name="description"
+    content="Browse the open-source licenses and metadata for the dependencies used by Strict POSIX cron builder & parser. Search packages, licenses, repos, and more."
+  />
+</svelte:head>
+
 <section class="space-y-5 py-2">
   <h1 class="text-2xl font-semibold tracking-tight">Licenses</h1>
 
