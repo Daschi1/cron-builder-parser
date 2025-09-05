@@ -10,6 +10,11 @@ const pages = [
     priority: 1.0
   },
   {
+    path: "/ipsubnet",
+    changefreq: "monthly",
+    priority: 0.8
+  },
+  {
     path: "/licenses",
     changefreq: "yearly",
     priority: 0.6

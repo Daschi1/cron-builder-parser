@@ -16,6 +16,7 @@
       <LinkButton href="/#builder" variant="ghost" size="sm">Builder</LinkButton>
       <LinkButton href="/#parser" variant="ghost" size="sm">Parser</LinkButton>
       <LinkButton href="/#help" variant="ghost" size="sm">Help</LinkButton>
+      <LinkButton href="/ipsubnet" variant="ghost" size="sm">IP Subnet</LinkButton>
     </nav>
   </Container>
 </header>
